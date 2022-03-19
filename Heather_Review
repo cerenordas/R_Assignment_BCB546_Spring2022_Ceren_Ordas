@@ -1,0 +1,29 @@
+Hi, Ceren,
+Code ran just fine! I did the same thing you did during the data inspection, but think for my final version I will just do "dim" instead of "nrow" and "ncol" since it gives the same info.
+
+I noticed with your ascending/descending files, they were yet to be sorted by position. Try this:
+
+sort_maize <- join_maize %>% #Create object for sorted ascending maize
+  arrange(as.numeric(Chromosome), as.numeric(Position)) # sorts by chromosome number and position, in ascending order>
+sort_desc_maize <- join_maize %>% #Create object for sorted descending maize
+  arrange(as.numeric(Chromosome), desc(as.numeric(Position))) #sort maize in descending position? 
+  
+To fix your question mark to dash problem, treat the question mark like a wild card, like this:
+maize_dash <- data.frame(lapply(sort_desc_maize, gsub, pattern = "[?]", replacement = "-")) #replace ? within brackets because it is wildcard
+
+In order for your visuals to display chromosomes as whole numbers (1, 2, 3, etc. instead of 1.0, 5.0, etc.), they need to be binned first. Also, by removing multiple or unknown posiitions, you should avoid that weird 
+"Removed 44 rows" error. Try this:
+
+sort_maize_bin <- sort_maize %>% #Create binned object for sorted maize
+  filter(Position != "unknown") %>% #Filter out unknown positions
+  filter(Position != "multiple") %>% #Filter out multiple positions
+  mutate(position_binned = cut(as.numeric(Position), 10)) %>% #Cut chromosomes into 10 bins and make own category
+  filter(Chromosome != "multiple") %>% #Filter out multiple chromosomes
+  filter(Chromosome != "unknown") %>% #Filter out unknown chromosomes
+  mutate(Chromosome = fct_relevel(Chromosome, c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10"))) #Use levels to put visuals in chromosome order
+
+I really loved your visuals for both the SNPs Across Chromosome Distributed Across Groups and Heterozygosity plots. It was challenging for me to figure out how to make a stacked bar graph like that. Awesome job!
+
+For plotting the density, is this a required visual? If not, I would skip it all together. I think you have a good thing going with the last visual of SNPs v. Zygosity. To make the chromsomes in order, bin them as described above!
+
+
