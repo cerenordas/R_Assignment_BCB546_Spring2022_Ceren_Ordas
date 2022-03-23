@@ -147,7 +147,7 @@ SNP_Chromosome_Positions <- snp_position[,c(1,3,4)]
 
 - After that, we need to combine our data files in order to organize it so the first column says "SNP_ID", second column says "Chromosome" and the third column says "Position" and then followed by the genotype data. 
 
-- To do that we need to transpose the 'Maize_ID_Data' and the 'Teosinte_ID_Data' andx then combine them.
+- To do that we need to transpose the 'Maize_ID_Data' and the 'Teosinte_ID_Data' and then combine them.
 
 ```{r}
 Transposed_Maize_ID_Data <- as.data.frame(t(Maize_ID_Data[,-1]))
@@ -190,18 +190,24 @@ Teosinte_Chrom_Descending <- Teosinte_Chromosomes[order(suppressWarnings(as.nume
 library(tidyverse)
 ```
 
-- Now, we will create a function to make 10 files in one command in which we will have 10 for Maize and Teosinte, in both ascending and descending order:
+- Now, we will create a function to make 10 files in one command in which we will have 10 for Maize and Teosinte, in both ascending and descending order, also replace "?" with "-" for the descending order files:
 
-### I NEED TO FIGURE OUT HOW TO ADD THE (-) FOR MISSING DATA INSTEAD OF THE ?. LEMME KNOW IF YOU KNOW HOW TO DO THAT LOL.
+- Also the function will filter out multiple and unknown positions and chromosomes.
 
 ```{r}
-Filter_By_Chromosome <- function(x, df){df %>% filter(Chromosome == x)}
+Filter_By_Chromosome <- function(x, df){
+  df %>% 
+    filter(Position !="unknown" || Position != "multiple") %>% 
+    filter(Chromosome != "multiple" || Chromosome != "unknown") %>%
+    filter(Chromosome == x)}
+ 
 Maize_Ascending_ByChromosome <- lapply(sort(unique(Maize_Chrom_Ascending$Chromosome)), Filter_By_Chromosome, Maize_Chrom_Ascending)
 invisible(lapply(Maize_Ascending_ByChromosome, function(x) write.csv(x, file = paste0("Maize_Ascending_Chrom", x$Chromosome[1], ".txt"))))
 ```
 
 ```{r}
-Maize_Descending_ByChromosome <- lapply(sort(unique(Maize_Chrom_Descending$Chromosome)), Filter_By_Chromosome, Maize_Chrom_Descending)
+Maize_Descending_ByChromosome_dash <- data.frame(lapply(Maize_Chrom_Descending, gsub, pattern = "[?]", replacement = "-"))
+Maize_Descending_ByChromosome <- lapply(sort(unique(Maize_Descending_ByChromosome_dash$Chromosome)), Filter_By_Chromosome, Maize_Descending_ByChromosome_dash)
 invisible(lapply(Maize_Descending_ByChromosome, function(x) write.csv(x, file = paste0("Maize_Descending_Chrom", x$Chromosome[1], ".txt"))))
 ```
 
@@ -211,7 +217,8 @@ invisible(lapply(Teosinte_Ascending_ByChromosome,function(x) write.csv(x, file =
 ```
 
 ```{r}
-Teosinte_Descending_ByChromosome <- lapply(sort(unique(Teosinte_Chrom_Descending$Chromosome)), Filter_By_Chromosome, Teosinte_Chrom_Descending)
+Teosinte_Descending_ByChromosome_dash <- data.frame(lapply(Teosinte_Chrom_Descending, gsub, pattern = "[?]", replacement = "-"))
+Teosinte_Descending_ByChromosome <- lapply(sort(unique(Teosinte_Descending_ByChromosome_dash$Chromosome)), Filter_By_Chromosome, Teosinte_Descending_ByChromosome_dash)
 invisible(lapply(Teosinte_Descending_ByChromosome,function(x) write.csv(x, file = paste0("Teosinte_Descending_Chrom", x$Chromosome[1], ".txt"))))
 ```
 
@@ -287,7 +294,7 @@ Warning message:
 Removed 44 rows containing missing values (geom_point).
 
 ```{r}
-Maize_Dot_Plot <- ggplot(Maize_Numeric_Chrom, aes(x=Position, y=Chromosome, fill= Chromosome)) + geom_point()
+Maize_Dot_Plot <- ggplot(Maize_Numeric_Chrom, aes(x=Position, y=Chromosome, fill= Chromosome)) + geom_point() + scale_y_continuous(breaks=c(1,2,3,4,5,6,7,8,9,10))
 ggsave("Maize_SNP_Position_Dot_Plot.png", plot = Maize_Dot_Plot)
 ```
 
@@ -297,16 +304,14 @@ ggsave("Maize_SNP_Position_Dot_Plot.png", plot = Maize_Dot_Plot)
 Warning message:
 Removed 44 rows containing missing values (geom_point). 
 ```{r}
-Teosinte_Dot_Plot <- ggplot(Teosinte_Numeric_Chrom,  aes(x=Position, y=Chromosome, fill= Chromosome)) + geom_point()
+Teosinte_Dot_Plot <- ggplot(Teosinte_Numeric_Chrom,  aes(x=Position, y=Chromosome, fill= Chromosome)) + geom_point() + scale_y_continuous(breaks=c(1,2,3,4,5,6,7,8,9,10))
 ggsave("Teosinte_SNP_Position_Dot_Plot.png", plot = Teosinte_Dot_Plot)
 ```
 
 - Plotting the Density:
 
-###I AM NOT SURE WHICH ONE IS RIGHT. I AM HAVING ISSUES WITH BOTH COMMANDS DOWN HERE. ANY COMMENTS?
-
 ```{r warning=FALSE}
-Maize_Density <- ggplot(Maize_Chromosomes) + geom_density(aes(x=Position, fill = Chromosome))
+Maize_Density <- ggplot(Maize_Chromosomes) + geom_density(aes(x=Position, fill = Chromosome)) 
 ggsave("Maize_SNP_Density_Graph.png", plot = Maize_Density)
 ```
 
@@ -350,12 +355,11 @@ ggsave("Teosinte_SNP_Density_Final.png", plot = Teosinte_Density_Final)
 - My Own Visualization:
 
 - To observe the total number of SNPs per Chromosome, I ran the code below using ggplot.
+- With: position = "dodge", we can see the bars right next to each other so they do not overlap.
 
 ```{r}
-ggplot(merged_fang_et_al_pivot_numeric) + geom_bar(mapping=aes(x = Chromosome, fill=Heterozygosity), position="dodge") + labs(x = "Chromosome", y="Number of SNPs") + ggtitle("Amount of Homozygous and Heterozygous Samples with the Missing Data")
+ggplot(merged_fang_et_al_pivot_numeric) + geom_bar(mapping=aes(x = as.numeric(Chromosome), fill=Heterozygosity), position="dodge") + labs(x = "Chromosome", y="Number of SNPs") + ggtitle("Amount of Homozygous and Heterozygous Samples with the Missing Data") + scale_x_continuous(breaks=c(1,2,3,4,5,6,7,8,9,10))
 ```
 
-- With: position = "dodge", we can see the bars right next to each other so they do not overlap. I am not sure why but the chromosome number's order does not make sense at all! It goes 1, 10, 2, 3, 4, 5, 6, 7, 8, 9 for most of these and I am not sure how to fix that. :(
 
-I'll do rest later please cool ok thanks bye. :)
 
